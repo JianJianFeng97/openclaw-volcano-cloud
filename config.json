@@ -1,0 +1,29 @@
+{
+  "api": {
+    "mode": "gateway",
+    "versions": {
+      "RunInstances": "2020-04-01",
+      "DescribeInstances": "2020-04-01",
+      "StartInstance": "2020-04-01",
+      "StopInstance": "2020-04-01",
+      "RebootInstance": "2020-04-01",
+      "CreateVpc": "2020-04-01",
+      "CreateSubnet": "2020-04-01",
+      "CreateSecurityGroup": "2020-04-01",
+      "AuthorizeSecurityGroup": "2020-04-01",
+      "AllocateEipAddress": "2020-04-01",
+      "AssociateEipAddress": "2020-04-01",
+      "CreateClb": "2020-04-01"
+    }
+  },
+  "defaults": {
+    "default_instance_type": "ecs.g1i.large",
+    "default_image_id": "centos-7.9-amd64-20230915",
+    "default_tags": {
+      "created_by": "openclaw-volcano-skill"
+    }
+  },
+  "approvals": {
+    "default_dry_run": false
+  }
+}

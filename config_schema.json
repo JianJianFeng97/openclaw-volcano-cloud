@@ -1,0 +1,389 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "OpenClaw Volcano Engine Cloud Skill Config",
+  "type": "object",
+  "properties": {
+    "credentials": {
+      "type": "object",
+      "description": "火山引擎与方舟 Ark 访问凭据，仅存储在受控环境中。",
+      "properties": {
+        "ve_ak": {
+          "type": "string",
+          "description": "火山引擎账号的 Access Key（通过环境变量 VE_AK 兜底）。"
+        },
+        "ve_sk": {
+          "type": "string",
+          "description": "火山引擎账号的 Secret Key（通过环境变量 VE_SK 兜底）。"
+        },
+        "ve_region": {
+          "type": "string",
+          "description": "默认区域，例如 cn-beijing（通过环境变量 VE_REGION 兜底）。"
+        },
+        "ve_project": {
+          "type": "string",
+          "description": "默认项目或项目 ID，用于资源归集。"
+        },
+        "ark_api_key": {
+          "type": "string",
+          "description": "方舟 Ark 大模型调用凭据，推荐通过环境变量或密钥管理系统注入。"
+        }
+      },
+      "required": ["ve_ak", "ve_sk", "ve_region"]
+    },
+    "api": {
+      "type": "object",
+      "description": "火山引擎 OpenAPI 调用相关配置：模式、显式 host 与各 Action 的 Version。",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["service_host", "gateway"],
+          "description": "调用模式：service_host 使用 {service}.{region}.volcengineapi.com，gateway 使用 open.volcengineapi.com。",
+          "default": "service_host"
+        },
+        "hosts": {
+          "type": "object",
+          "description": "可选覆盖各服务的 host 映射，例如 { \"ecs\": \"ecs.cn-beijing.volcengineapi.com\" }。当不配置时按 mode 自动拼接。",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "versions": {
+          "type": "object",
+          "description": "各 OpenAPI Action 的 Version 映射，例如 { \"RunInstances\": \"2018-08-08\", \"CreateVpc\": \"2020-04-01\" }。务必以官方文档为准。",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "description": "资源创建与操作的默认参数。",
+      "properties": {
+        "default_instance_type": { "type": "string" },
+        "default_image_id": { "type": "string" },
+        "default_vpc_id": { "type": "string" },
+        "default_subnet_id": { "type": "string" },
+        "default_security_group_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "default_tags": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "description": "网络相关的默认配置与蓝图参数。",
+      "properties": {
+        "vpc": {
+          "type": "object",
+          "properties": {
+            "cidr": {
+              "type": "string",
+              "description": "VPC CIDR 段，例如 10.0.0.0/16。"
+            }
+          }
+        },
+        "subnets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "zone": { "type": "string" },
+              "cidr": { "type": "string" }
+            },
+            "required": ["name", "cidr"]
+          }
+        },
+        "security_groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "direction": { "type": "string" },
+                    "protocol": { "type": "string" },
+                    "port_range": { "type": "string" },
+                    "cidr": { "type": "string" },
+                    "description": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "required": ["name"]
+          }
+        },
+        "nat": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "bandwidth": {
+              "type": "number",
+              "description": "NAT 网关带宽占位，单位 Mbps。"
+            },
+            "spec": {
+              "type": "string",
+              "description": "NAT 网关规格（占位字段，例如 small/medium/large）。"
+            }
+          }
+        },
+        "route_tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "routes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "destination_cidr": { "type": "string" },
+                    "next_hop_type": { "type": "string" },
+                    "next_hop_id": { "type": "string" }
+                  }
+                }
+              }
+            },
+            "required": ["name"]
+          }
+        }
+      }
+    },
+    "connectivity": {
+      "type": "object",
+      "description": "连接性相关配置（例如 EIP）。",
+      "properties": {
+        "eip": {
+          "type": "object",
+          "properties": {
+            "bandwidth": {
+              "type": "number",
+              "description": "EIP 带宽占位，单位 Mbps。"
+            },
+            "charge": {
+              "type": "string",
+              "description": "计费方式占位，例如 PostPaid/PrePaid。"
+            }
+          }
+        }
+      }
+    },
+    "lb": {
+      "type": "object",
+      "description": "负载均衡相关配置。",
+      "properties": {
+        "clb": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "CLB 类型占位，例如 public/private。"
+            },
+            "listeners": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "protocol": { "type": "string" },
+                  "port": { "type": "integer" },
+                  "backend_port": { "type": "integer" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "description": "存储相关配置。",
+      "properties": {
+        "disks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "size": {
+                "type": "number",
+                "description": "云盘容量，单位 GiB。"
+              },
+              "attach_to": {
+                "type": "string",
+                "description": "需要挂载到的实例名称或 ID（占位）。"
+              }
+            },
+            "required": ["type", "size"]
+          }
+        },
+        "snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_disk_id": { "type": "string" },
+              "policy": {
+                "type": "string",
+                "description": "快照策略占位，例如 daily/weekly/自定义策略 ID。"
+              }
+            },
+            "required": ["source_disk_id"]
+          }
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "description": "容器相关配置。",
+      "properties": {
+        "vke": {
+          "type": "object",
+          "properties": {
+            "cluster_name": { "type": "string" },
+            "version": { "type": "string" },
+            "node_pools": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "instance_type": { "type": "string" },
+                  "count": { "type": "integer" },
+                  "subnet_id": { "type": "string" }
+                },
+                "required": ["name", "instance_type", "count"]
+              }
+            }
+          },
+          "required": ["cluster_name"]
+        }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "description": "私有域名相关配置。",
+      "properties": {
+        "private_zone": {
+          "type": "object",
+          "properties": {
+            "zone_name": { "type": "string" },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string" },
+                  "value": { "type": "string" },
+                  "ttl": { "type": "integer" }
+                }
+              }
+            }
+          },
+          "required": ["zone_name"]
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "description": "成本与预算控制相关配置，包括云资源与 Ark 模型。",
+      "properties": {
+        "account_monthly_budget": {
+          "type": "number",
+          "description": "账号级月度预算上限，单位：元。"
+        },
+        "project_monthly_budget": {
+          "type": "object",
+          "description": "按项目维度的月度预算上限。",
+          "additionalProperties": { "type": "number" }
+        },
+        "daily_cost_threshold": {
+          "type": "number",
+          "description": "日均费用告警阈值，单位：元。"
+        },
+        "ark_price_map": {
+          "type": "object",
+          "description": "方舟 Ark 模型价表映射，可与环境变量 ARK_PRICE_MAP 对齐。",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "input_per_1k_tokens": { "type": "number" },
+              "output_per_1k_tokens": { "type": "number" },
+              "currency": { "type": "string" }
+            },
+            "required": ["input_per_1k_tokens", "output_per_1k_tokens"]
+          }
+        }
+      }
+    },
+    "approvals": {
+      "type": "object",
+      "description": "高危操作的审批与二次确认策略。",
+      "properties": {
+        "require_approval_actions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "需要审批或人工二次确认的操作类型，例如 delete_instance、release_eip。"
+        },
+        "default_dry_run": {
+          "type": "boolean",
+          "description": "是否默认以 dry_run 模式执行危险操作，仅给出预览。"
+        },
+        "approvers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "审批人标识（如邮箱、飞书 open_id 等）。"
+        }
+      }
+    },
+    "tags": {
+      "type": "object",
+      "description": "标签规范与归集约定。",
+      "properties": {
+        "project_tag_key": { "type": "string" },
+        "environment_tag_key": { "type": "string" },
+        "owner_tag_key": { "type": "string" },
+        "default_tags": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "reporting": {
+      "type": "object",
+      "description": "巡检、成本与 Ark 用量报告的输出约定。",
+      "properties": {
+        "output_dir": {
+          "type": "string",
+          "description": "报告输出目录，默认为 Skill 根目录下的 reports/。"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "报告时间使用的时区，例如 Asia/Shanghai。"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["zh-CN", "en-US"],
+          "description": "报告语言。"
+        },
+        "include_technical_details": {
+          "type": "boolean",
+          "description": "是否在报告中包含技术细节附录。"
+        }
+      }
+    }
+  },
+  "required": ["credentials"]
+}
