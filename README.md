@@ -20,26 +20,12 @@
 ## 文件结构
 
 ```
-skills/openclaw-volcano-cloud/
-├── SKILL.md                  # 技能核心定义：触发词、指令、示例
-├── README.md                 # 当前文件，提供集成与使用说明
-├── config_schema.json        # 技能配置文件的 JSON Schema
-├── scripts/                  # 可执行脚本
-│   ├── ve_openapi_signer.py  # 火山引擎 OpenAPI V4 签名工具
-│   ├── ve_openapi_client.py  # 火山引擎 OpenAPI V4 通用客户端
-│   ├── vecloud_client.py     # 整合了真实 API 调用的云资源操作客户端
-│   ├── provision_env.py      # 环境蓝图编排脚本（plan 占位）
-│   ├── ark_usage_cost.py     # Ark 用量与成本统计
-│   ├── workorder_create.py   # 工单生成器
-│   ├── inspect_runner.py     # 巡检编排器
-│   └── common.py             # 通用工具函数
-├── references/               # 参考文档与模板
-│   ├── api_mapping.md        # 技能动作与火山引擎 API/资源字段的映射关系
-│   └── rag_templates.md      # RAG 故障问答模板
-├── logs/                     # 审计日志目录（由脚本自动创建）
-│   └── audit.log
-└── reports/                  # 报告输出目录（由脚本自动创建）
-    └── ...
+openclaw-volcano-cloud/
+├── scripts/                # 核心代码目录
+│   └── vecloud_client.py   # 主程序入口
+├── config.json             # 配置文件（可选）
+├── SKILL.md                # 技能说明文档
+└── 试用指南.md              # 本文件
 ```
 
 ## 集成方式
@@ -52,7 +38,7 @@ skills/openclaw-volcano-cloud/
     ```bash
     export VE_AK="YOUR_VOLCANO_ENGINE_ACCESS_KEY"
     export VE_SK="YOUR_VOLCANO_ENGINE_SECRET_KEY"
-    export VE_REGION="cn-beijing"
+    export VE_REGION="cn-shanghai"
     ```
 
 3.  **创建并配置 `config.json`**:
@@ -64,7 +50,7 @@ skills/openclaw-volcano-cloud/
       "credentials": {
         "ve_ak": "YOUR_AK_OR_USE_ENV_VAR",
         "ve_sk": "YOUR_SK_OR_USE_ENV_VAR",
-        "ve_region": "cn-beijing"
+        "ve_region": "cn-shanghai"
       },
       "api": {
         "mode": "service_host",
@@ -98,75 +84,118 @@ skills/openclaw-volcano-cloud/
     }
     ```
     **注意**: `api.versions` 中的版本号需以火山引擎官方文档为准。
-
-## 本地测试示例
-
-### 示例 1: 创建 VPC
-
-1.  创建 `vpc.json` 文件：
-    ```json
-    {
-      "VpcName": "my-test-vpc",
-      "CidrBlock": "10.10.0.0/16"
-    }
-    ```
-2.  执行真实创建命令：
-    ```bash
-    python skills/openclaw-volcano-cloud/scripts/vecloud_client.py \
-      --action create_vpc \
-      --payload-file vpc.json \
-      --config path/to/your/config.json
-    ```
-
-### 示例 2: 创建 ECS 实例
-
-1.  创建 `ecs.json` 文件（请替换为您的真实 VPC 和子网 ID）：
-    ```json
-    {
-      "InstanceName": "my-test-ecs",
-      "InstanceType": "ecs.g1ie.large",
-      "ImageId": "image-ybjon96vrtes7s*****",
-      "VpcId": "vpc-274o1qew383r47fap8t7k****",
-      "SubnetId": "subnet-274o2w7bgn7747fap8tc****",
-      "SecurityGroupIds": ["sg-274omwz6p5d1s7fap8s7****"],
-      "Password": "YourPassword@123"
-    }
-    ```
-2.  执行真实创建命令：
-    ```bash
-    python skills/openclaw-volcano-cloud/scripts/vecloud_client.py \
-      --action create_instance \
-      --payload-file ecs.json \
-      --config path/to/your/config.json
-    ```
-
-### 示例 3: 使用 `--dry-run` 预览操作
-
-如果您想在执行前预览 API 请求，可以使用 `--dry-run` 标志。这不会发起真实 API 调用。
-
+## 🎯 功能使用示例
+所有命令均在`openclaw-volcano-cloud`目录下执行
+---
+### ✅ 1. 查询ECS实例列表
 ```bash
-python skills/openclaw-volcano-cloud/scripts/vecloud_client.py \
-  --action create_vpc \
-  --payload-file vpc.json \
-  --config path/to/your/config.json \
-  --dry-run
+python scripts/vecloud_client.py --action list_assets
 ```
-
-### 示例 4: 巡检云资源
-
-此操作通常是只读的，可以相对安全地执行。
-
+返回结果示例：
+```json
+{
+  "ok": true,
+  "assets": [
+    {
+      "resource_id": "i-xxxxxx",
+      "resource_name": "test-ecs",
+      "status": "RUNNING",
+      "public_ip": "118.xx.xx.xx",
+      "private_ip": "172.31.0.2",
+      "os_name": "veLinux 2.0 CentOS Compatible 64 bit",
+      "instance_type": "ecs.g4i.large"
+    }
+  ]
+}
+```
+---
+### ✅ 2. 查询账户余额
 ```bash
-python skills/openclaw-volcano-cloud/scripts/inspect_runner.py \
-  --config path/to/your/config.json \
-  --output result.json
+python scripts/vecloud_client.py --action query_balance
 ```
-这会调用 `DescribeInstances`（如果已在 `config.json` 中配置 Version）并生成一份本地巡检报告。
-
-## 安全提示
-
-- **凭据安全**: 切勿将 AK/SK 硬编码在脚本或 `SKILL.md` 中。强烈建议使用环境变量或安全的密钥管理服务。
-- **最小权限**: 为 OpenClaw 使用的 AK/SK 配置最小化的 IAM 权限，仅授予其执行必要操作的权限。
-- **二次确认**: 对于删除/释放资源等高危操作，Agent **必须**在调用脚本前向用户发起二次确认，并明确告知风险。
-- **`--dry-run` 预览**: 在执行任何不确定的操作前，强烈建议先使用 `--dry-run` 查看计划。
-- **审计日志**: 所有脚本都会将操作写入 `logs/audit.log`（JSON Lines）。在排查问题、审计操作或归档变更记录时，可直接基于该文件进行分析。
+返回结果示例：
+```json
+{
+  "ok": true,
+  "balance": {
+    "available_balance": "98.15",
+    "cash_balance": "98.15",
+    "freeze_amount": "0",
+    "arrears_balance": "0",
+    "currency": "CNY"
+  }
+}
+```
+---
+### ✅ 3. 查询账单明细
+```bash
+# 查询2026年3月账单，默认返回10条记录
+python scripts/vecloud_client.py --action query_bill --bill-period 2026-03
+# 自定义返回条数
+python scripts/vecloud_client.py --action query_bill --bill-period 2026-03 --limit 20
+```
+返回结果包含总消费金额、每条消费记录的时间、产品类型、费用等信息。
+---
+### ✅ 4. 查询Ark大模型成本
+```bash
+# 查询2026年3月Ark消费明细
+python scripts/vecloud_client.py --action query_ark_cost --bill-period 2026-03
+```
+返回结果示例（无消费时总费用为0）：
+```json
+{
+  "ok": true,
+  "bill_period": "2026-03",
+  "total_cost": 0,
+  "total_calls": 0,
+  "model_stats": {}
+}
+```
+---
+### ✅ 5. 停止ECS实例
+```bash
+# 先创建参数文件 stop_instance.json
+echo '{"instance_id": "i-你的实例ID"}' > stop_instance.json
+# 执行停止操作
+python scripts/vecloud_client.py --action stop --payload-file stop_instance.json
+# 模拟执行（不真实停止）
+python scripts/vecloud_client.py --action stop --payload-file stop_instance.json --dry-run
+```
+---
+### ✅ 6. 启动ECS实例
+```bash
+# 创建参数文件 start_instance.json
+echo '{"instance_id": "i-你的实例ID"}' > start_instance.json
+# 执行启动操作
+python scripts/vecloud_client.py --action start --payload-file start_instance.json
+```
+---
+### ✅ 7. 重启ECS实例
+```bash
+# 创建参数文件 reboot_instance.json
+echo '{"instance_id": "i-你的实例ID"}' > reboot_instance.json
+# 执行重启操作
+python scripts/vecloud_client.py --action reboot --payload-file reboot_instance.json
+```
+---
+### ✅ 8. 生成工单草稿（工单功能待SDK安装后可直接提交）
+```bash
+python scripts/vecloud_client.py --action create_ticket --title "ECS实例公网无法访问" --content "实例i-xxxxxx公网ping不通，SSH也无法连接" --severity high --product-type ecs
+```
+---
+## ⚠️ 注意事项
+1. **密钥安全**：请勿将AK/SK硬编码到代码或配置文件中提交到公共仓库，推荐使用环境变量方式配置
+2. **Dry-Run模式**：所有变更类操作（启动/停止/创建实例）都可以加上`--dry-run`参数模拟执行，确认无误后再真实操作
+3. **地域选择**：VE_REGION需要填写你资源所在的正确地域，否则会查询不到资源
+4. **权限要求**：使用的AK需要对应开通相关云产品的访问权限，否则会返回权限不足错误
+## ❓ 常见问题
+### Q1：执行命令返回`Missing authentication token`
+A：AK/SK配置错误，请检查密钥是否正确，环境变量是否生效
+### Q2：查询不到ECS实例
+A：检查VE_REGION是否和实例所在地域一致
+### Q3：创建实例返回`Insufficient.Balance`
+A：账户余额不足，请充值后再操作
+### Q4：工单功能无法使用
+A：需要额外安装火山引擎工单SDK`volcenginesdkticket`，安装后即可完整使用
+## 📞 技术支持
+使用过程中遇到任何问题，或者需要扩展其他功能，随时联系开发者哦😉
