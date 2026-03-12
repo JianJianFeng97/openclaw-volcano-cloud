@@ -24,6 +24,119 @@ allowed-tools:
 2. 已配置火山引擎AK/SK，具备对应资源的操作权限
 3. （可选）已配置GitHub仓库，用于GitOps状态存储
 
+## 📋 前置准备
+### 1. Python环境要求
+- Python版本：3.8 ~ 3.12（推荐3.10+）
+- 操作系统：Linux/macOS/Windows均可
+### 2. 安装依赖
+```bash
+# 安装火山引擎官方Python SDK
+pip install volcengine-python-sdk --upgrade
+# 验证安装
+python -c "import volcenginesdkcore; print('SDK安装成功，版本：', volcenginesdkcore.__version__)"
+```
+
+```
+## 🎯 功能使用示例
+所有命令均在`openclaw-volcano-cloud`目录下执行
+---
+### ✅ 1. 查询ECS实例列表
+```bash
+python scripts/vecloud_client.py --action list_assets
+```
+返回结果示例：
+```json
+{
+  "ok": true,
+  "assets": [
+    {
+      "resource_id": "i-xxxxxx",
+      "resource_name": "test-ecs",
+      "status": "RUNNING",
+      "public_ip": "118.xx.xx.xx",
+      "private_ip": "172.31.0.2",
+      "os_name": "veLinux 2.0 CentOS Compatible 64 bit",
+      "instance_type": "ecs.g4i.large"
+    }
+  ]
+}
+```
+---
+### ✅ 2. 查询账户余额
+```bash
+python scripts/vecloud_client.py --action query_balance
+```
+返回结果示例：
+```json
+{
+  "ok": true,
+  "balance": {
+    "available_balance": "98.15",
+    "cash_balance": "98.15",
+    "freeze_amount": "0",
+    "arrears_balance": "0",
+    "currency": "CNY"
+  }
+}
+```
+---
+### ✅ 3. 查询账单明细
+```bash
+# 查询2026年3月账单，默认返回10条记录
+python scripts/vecloud_client.py --action query_bill --bill-period 2026-03
+# 自定义返回条数
+python scripts/vecloud_client.py --action query_bill --bill-period 2026-03 --limit 20
+```
+返回结果包含总消费金额、每条消费记录的时间、产品类型、费用等信息。
+---
+### ✅ 4. 查询Ark大模型成本
+```bash
+# 查询2026年3月Ark消费明细
+python scripts/vecloud_client.py --action query_ark_cost --bill-period 2026-03
+```
+返回结果示例（无消费时总费用为0）：
+```json
+{
+  "ok": true,
+  "bill_period": "2026-03",
+  "total_cost": 0,
+  "total_calls": 0,
+  "model_stats": {}
+}
+```
+---
+### ✅ 5. 停止ECS实例
+```bash
+# 先创建参数文件 stop_instance.json
+echo '{"instance_id": "i-你的实例ID"}' > stop_instance.json
+# 执行停止操作
+python scripts/vecloud_client.py --action stop --payload-file stop_instance.json
+# 模拟执行（不真实停止）
+python scripts/vecloud_client.py --action stop --payload-file stop_instance.json --dry-run
+```
+---
+### ✅ 6. 启动ECS实例
+```bash
+# 创建参数文件 start_instance.json
+echo '{"instance_id": "i-你的实例ID"}' > start_instance.json
+# 执行启动操作
+python scripts/vecloud_client.py --action start --payload-file start_instance.json
+```
+---
+### ✅ 7. 重启ECS实例
+```bash
+# 创建参数文件 reboot_instance.json
+echo '{"instance_id": "i-你的实例ID"}' > reboot_instance.json
+# 执行重启操作
+python scripts/vecloud_client.py --action reboot --payload-file reboot_instance.json
+```
+---
+### ✅ 8. 生成工单草稿（工单功能待SDK安装后可直接提交）
+```bash
+python scripts/vecloud_client.py --action create_ticket --title "ECS实例公网无法访问" --content "实例i-xxxxxx公网ping不通，SSH也无法连接" --severity high --product-type ecs
+```
+---
+
 ## 核心指令
 ### 资源查询类
 | 指令示例 | 说明 |
@@ -66,14 +179,20 @@ allowed-tools:
 ## 目录结构
 ```
 openclaw-volcano-cloud/
-├── SKILL.md                # 技能说明文档（本文件）
-├── README.md               # 项目详细介绍文档
-├── config.json.example     # 配置文件模板，复制为config.json使用
-├── scripts/                # 核心脚本目录
+├── SKILL.md                # OpenClaw标准技能说明文档，包含触发条件、核心指令、安全规则
+├── README.md               # 完整项目技术文档，就是你要的公众号文章的技术版
+├── config.json.example     # 配置文件模板，已清空所有密钥，用户自行填入AK/SK即可使用
+├── config_schema.json      # 配置文件校验规则
+├── scripts/                # 核心功能脚本
+│   ├── common.py           # 公共工具函数
 │   ├── vecloud_client.py   # 云资源操作客户端
-│   ├── inspect_runner.py   # 巡检脚本
-│   ├── ark_usage_cost.py   # Ark成本统计脚本
-│   └── common.py           # 公共工具函数
-├── logs/                   # 审计日志目录
-└── reports/                # 巡检/账单报告输出目录
+│   └── gitops_agent.py     # GitOps自动化脚本
+├── references/             # 参考文档
+│   ├── api_mapping.md
+│   ├── desired-state-example.md
+│   └── rag_templates.md
+├── logs/                   # 审计日志目录（带.gitkeep占位）
+└── reports/                # 巡检报告输出目录（带.gitkeep占位）
 ```
+## Gitops仓库地址
+仓库地址：https://github.com/JianJianFeng97/volc-infra
