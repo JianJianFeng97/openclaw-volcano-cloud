@@ -112,19 +112,21 @@ def create_instance(
     
     try:
         api_instance = volcenginesdkecs.ECSApi()
+        network_interfaces = [
+            {
+                "SubnetId": "subnet-33gs4r2t8zzls6k70bq07mbqy",
+                "SecurityGroupIds": ["sg-366we8n77ulfk1e710az6t174"]
+            }
+        ]
         request = volcenginesdkecs.RunInstancesRequest(
             instance_name=spec.get("name", "openclaw-auto-ecs"),
             instance_type=spec.get("instance_type", "ecs.g4i.large"),
-            image_id=spec.get("image_id", "image-ybm3r19o545id8bxuanl"),
-            zone_id=spec.get("zone_id", ""),
-            system_disk_size=spec.get("system_disk", {}).get("size", 40),
-            system_disk_type=spec.get("system_disk", {}).get("volume_type", "ESSD_PL0"),
-            subnet_id=spec.get("subnet_id", ""),
-            security_group_ids=spec.get("security_group_ids", []),
-            internet_max_bandwidth_out=spec.get("internet_max_bandwidth_out", 10),
-            password=spec.get("password", ""),
+            image_id=spec.get("image_id", "image-yd7m6lyk64m05l01lxp1"),
+            zone_id=spec.get("zone_id", "cn-shanghai-a"),
+            network_interfaces=network_interfaces,
+            password="Openclaw@2026",
             instance_charge_type=spec.get("instance_charge_type", "PostPaid"),
-            count=spec.get("count", 1)
+            count=1
         )
         # 过滤空参数
         request_dict = {k: v for k, v in request.to_dict().items() if v not in (None, "", [], {})}
@@ -306,6 +308,58 @@ def reboot_instance(
             {"instance_id": instance_id},
             status="error",
             message=f"重启实例失败: {e.body}"
+        )
+        return {
+            "dry_run": False,
+            "ok": False,
+            "error": error_info
+        }
+
+def terminate_instance(
+    creds: Dict[str, Any],
+    instance_id: str,
+    dry_run: bool = False
+) -> Dict[str, Any]:
+    """终止（删除）ECS实例"""
+    if dry_run:
+        return {
+            "dry_run": True,
+            "instance_id": instance_id,
+            "note": "dry_run模式，未实际删除实例"
+        }
+    
+    try:
+        api_instance = volcenginesdkecs.ECSApi()
+        request = volcenginesdkecs.DeleteInstancesRequest(
+            instance_ids=[instance_id]
+        )
+        resp = api_instance.delete_instances(request)
+        resp_dict = resp.to_dict()
+        
+        write_audit_log(
+            "vecloud.ecs.terminate_instance",
+            {"instance_id": instance_id},
+            status="success",
+            message=f"删除实例{instance_id}成功"
+        )
+        return {
+            "dry_run": False,
+            "ok": True,
+            "instance_id": instance_id,
+            "status": "deleted",
+            "raw_response": resp_dict
+        }
+    except ApiException as e:
+        error_info = {
+            "status": e.status,
+            "body": e.body,
+            "request_id": e.headers.get("X-Tt-Logid")
+        }
+        write_audit_log(
+            "vecloud.ecs.terminate_instance",
+            {"instance_id": instance_id},
+            status="error",
+            message=f"删除实例失败: {e.body}"
         )
         return {
             "dry_run": False,
@@ -526,7 +580,7 @@ def create_ticket(
 def main():
     parser = argparse.ArgumentParser(description="火山引擎云资源管理客户端（基于官方Python SDK）")
     parser.add_argument("--action", required=True, choices=[
-        "create_instance", "start", "stop", "reboot", "list_assets",
+        "create_instance", "start", "stop", "reboot", "terminate_instance", "list_assets",
         "query_balance", "query_bill", "query_ark_cost", "create_ticket",
         "inspect_baseline", "generate_report", "create_vpc", "create_subnet",
         "create_sg", "add_sg_rule", "create_nat", "create_route_table",
@@ -580,6 +634,8 @@ def main():
         result = start_instance(creds, payload.get("instance_id", ""), args.dry_run)
     elif args.action == "reboot":
         result = reboot_instance(creds, payload.get("instance_id", ""), args.dry_run)
+    elif args.action == "terminate_instance":
+        result = terminate_instance(creds, payload.get("instance_id", ""), args.dry_run)
     elif args.action == "query_balance":
         result = query_balance(creds, args.dry_run)
     elif args.action == "query_bill":

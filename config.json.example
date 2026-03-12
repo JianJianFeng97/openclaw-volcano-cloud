@@ -1,0 +1,34 @@
+{
+  "credentials": {
+    "ve_ak": "<your-volcengine-access-key>",
+    "ve_sk": "<your-volcengine-secret-key>",
+    "ve_region": "cn-shanghai"
+  },
+  "api": {
+    "mode": "gateway",
+    "versions": {
+      "RunInstances": "2020-04-01",
+      "DescribeInstances": "2020-04-01",
+      "StartInstance": "2020-04-01",
+      "StopInstance": "2020-04-01",
+      "RebootInstance": "2020-04-01",
+      "CreateVpc": "2020-04-01",
+      "CreateSubnet": "2020-04-01",
+      "CreateSecurityGroup": "2020-04-01",
+      "AuthorizeSecurityGroup": "2020-04-01",
+      "AllocateEipAddress": "2020-04-01",
+      "AssociateEipAddress": "2020-04-01",
+      "CreateClb": "2020-04-01"
+    }
+  },
+  "defaults": {
+    "default_instance_type": "ecs.g4i.large",
+    "default_image_id": "image-yd7m6lyk64m05l01lxp1",
+    "default_tags": {
+      "created_by": "openclaw-volcano-skill"
+    }
+  },
+  "approvals": {
+    "default_dry_run": false
+  }
+}
