@@ -50,6 +50,7 @@
 - OpenClaw ≥ 0.8.0
 - Terraform ≥ 1.6.0
 - 火山引擎账号，已创建具备`ECSFullAccess`/`VPCFullAccess`/`BillingReadOnlyAccess`权限的AK/SK
+- 安装 火山引擎pythonSDK :pip install volcengine-python-sdk --upgrade
 
 ### 2. 配置
 复制`config.json.example`为`config.json`，填入火山引擎AK/SK与默认区域：
