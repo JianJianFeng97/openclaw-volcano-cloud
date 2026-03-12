@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 import volcenginesdkcore
 import volcenginesdkecs
 import volcenginesdkbilling
+import volcenginesdkark
 # import volcenginesdkticket  # 工单SDK待安装后启用
 from volcenginesdkcore.rest import ApiException
 try:
@@ -420,6 +421,79 @@ def query_balance(
             "error": error_info
         }
 
+def list_ark_endpoints(
+    creds: Dict[str, Any],
+    dry_run: bool = False
+) -> Dict[str, Any]:
+    """查询方舟ARK推理端点列表"""
+    if dry_run:
+        return {
+            "dry_run": True,
+            "note": "dry_run模式，未实际查询ARK端点"
+        }
+    
+    try:
+        # 方舟服务默认区域为cn-beijing
+        ark_region = creds.get("ark_region", "cn-beijing")
+        configuration = volcenginesdkcore.Configuration()
+        configuration.ak = creds["ak"]
+        configuration.sk = creds["sk"]
+        configuration.region = ark_region
+        volcenginesdkcore.Configuration.set_default(configuration)
+        
+        api_instance = volcenginesdkark.ARKApi()
+        request = volcenginesdkark.ListEndpointsRequest()
+        resp = api_instance.list_endpoints(request)
+        resp_dict = resp.to_dict()
+        
+        endpoints = []
+        for ep in resp_dict.get("items", []):
+            model_info = ep.get("model_reference", {})
+            if "foundation_model" in model_info:
+                model_name = model_info["foundation_model"]["name"]
+                model_version = model_info["foundation_model"]["model_version"]
+            else:
+                model_name = model_info.get("custom_model_id", "未知模型")
+                model_version = "-"
+            endpoints.append({
+                "endpoint_id": ep.get("id"),
+                "endpoint_name": ep.get("name"),
+                "model_name": model_name,
+                "model_version": model_version,
+                "status": ep.get("status"),
+                "create_time": ep.get("create_time")
+            })
+        
+        write_audit_log(
+            "vecloud.ark.list_endpoints",
+            {},
+            status="success",
+            message=f"查询到{len(endpoints)}个ARK推理端点"
+        )
+        return {
+            "dry_run": False,
+            "ok": True,
+            "endpoints": endpoints,
+            "raw_response": resp_dict
+        }
+    except ApiException as e:
+        error_info = {
+            "status": e.status,
+            "body": e.body,
+            "request_id": e.headers.get("X-Tt-Logid")
+        }
+        write_audit_log(
+            "vecloud.ark.list_endpoints",
+            {},
+            status="error",
+            message=f"查询ARK端点失败: {e.body}"
+        )
+        return {
+            "dry_run": False,
+            "ok": False,
+            "error": error_info
+        }
+
 def query_bill(
     creds: Dict[str, Any],
     bill_period: str,
@@ -581,7 +655,7 @@ def main():
     parser = argparse.ArgumentParser(description="火山引擎云资源管理客户端（基于官方Python SDK）")
     parser.add_argument("--action", required=True, choices=[
         "create_instance", "start", "stop", "reboot", "terminate_instance", "list_assets",
-        "query_balance", "query_bill", "query_ark_cost", "create_ticket",
+        "query_balance", "query_bill", "query_ark_cost", "list_ark_endpoints", "create_ticket",
         "inspect_baseline", "generate_report", "create_vpc", "create_subnet",
         "create_sg", "add_sg_rule", "create_nat", "create_route_table",
         "add_route", "create_eip", "bind_eip", "create_clb", "create_disk",
@@ -638,6 +712,8 @@ def main():
         result = terminate_instance(creds, payload.get("instance_id", ""), args.dry_run)
     elif args.action == "query_balance":
         result = query_balance(creds, args.dry_run)
+    elif args.action == "list_ark_endpoints":
+        result = list_ark_endpoints(creds, args.dry_run)
     elif args.action == "query_bill":
         if not args.bill_period:
             raise ValueError("query_bill动作需要指定--bill-period参数，格式YYYY-MM")
